@@ -4,6 +4,7 @@ import re
 
 
 # configure the serial connections (the parameters differs on the device you are connecting to)
+'''
 P5S = serial.Serial(
     port='COM5',
     baudrate=9600,
@@ -19,7 +20,23 @@ AS3000 = serial.Serial(
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.SEVENBITS
 )
+'''
 
+vserial0= serial.Serial(
+    port='/dev/tnt0',
+    baudrate=9600,
+    parity=serial.PARITY_EVEN,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.SEVENBITS
+)
+
+vserial1 = serial.Serial(
+    port='/dev/tnt1',
+    baudrate=9600,
+    parity=serial.PARITY_EVEN,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.SEVENBITS
+)
 
 def map_str(s):
     mapping = [ ('\x0a', '<LF>'), 

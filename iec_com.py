@@ -13,7 +13,7 @@ ETX = '\x03'
 EOT = '\x04'
 
 # COM settings
-
+'''
 AS3000 = serial.Serial(
     port='COM4',
     baudrate=9600,
@@ -21,6 +21,24 @@ AS3000 = serial.Serial(
     stopbits=serial.STOPBITS_ONE,
     bytesize=serial.SEVENBITS
 )
+'''
+
+vserial0 = serial.Serial(
+    port='/dev/tnt0',
+    baudrate=9600,
+    parity=serial.PARITY_EVEN,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.SEVENBITS
+)
+
+vserial1 = serial.Serial(
+    port='/dev/tnt1',
+    baudrate=9600,
+    parity=serial.PARITY_EVEN,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.SEVENBITS
+)
+
 
 
 # AS3000 comunication
@@ -158,7 +176,7 @@ class ProgCmdMsgExit(ProgCmdMsg):
 class IecDev():
     
     def __init__(self, serial):
-        self.ser = AS3000
+        self.ser = serial
         self.ser.isOpen()
         
     def show(self, s):
@@ -205,7 +223,7 @@ class IecDev():
 
 if __name__ == '__main__':
 
-    meter = IecDev(AS3000)
+    meter = IecDev(vserial0)
 
     # send request message
     id_msg = meter.send_msg(RequestMsg())
