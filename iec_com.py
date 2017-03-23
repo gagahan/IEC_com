@@ -13,32 +13,21 @@ ETX = '\x03'
 EOT = '\x04'
 
 # COM settings
-'''
-AS3000 = serial.Serial(
-    port='COM4',
-    baudrate=9600,
-    parity=serial.PARITY_EVEN,
-    stopbits=serial.STOPBITS_ONE,
-    bytesize=serial.SEVENBITS
-)
-'''
 
-vserial0 = serial.Serial(
-    port='/dev/tnt0',
-    baudrate=9600,
-    parity=serial.PARITY_EVEN,
-    stopbits=serial.STOPBITS_ONE,
-    bytesize=serial.SEVENBITS
-)
+class COM_7E1_9600:
+    port = ''
+    baudrate = '9600'
+    bytesize = serial.SEVENBITS
+    parity = serial.PARITY_EVEN
+    stopbits = serial.STOPBITS_ONE
 
-vserial1 = serial.Serial(
-    port='/dev/tnt1',
-    baudrate=9600,
-    parity=serial.PARITY_EVEN,
-    stopbits=serial.STOPBITS_ONE,
-    bytesize=serial.SEVENBITS
-)
+    def __init__(self, port=''):
+        self.port = port
 
+
+
+vserial0 = '/dev/tnt0'
+vserial1 = '/dev/tnt1'
 
 
 # AS3000 comunication
@@ -175,9 +164,14 @@ class ProgCmdMsgExit(ProgCmdMsg):
         
 class IecDev():
     
-    def __init__(self, serial):
-        self.ser = serial
+    def __init__(self, device):
+        self.ser = serial.Serial(port=device.port,
+                                 baudrate=device.baudrate,
+                                 parity=device.parity,
+                                 stopbits=device.stopbits,
+                                 bytesize=device.bytesize)
         self.ser.isOpen()
+        
         
     def show(self, s):
         mapping = [ (LF, '<LF>'), 
@@ -197,7 +191,7 @@ class IecDev():
             self.show('-> ' + msg.msg())
         self.ser.write(bytes(msg.msg(), 'utf-8'))
         
-        slow_down = 100 / self.ser.baudrate
+        slow_down = 200 / self.ser.baudrate
         out = ''
         t_start = time.time()
         nothing_received = True
@@ -223,7 +217,8 @@ class IecDev():
 
 if __name__ == '__main__':
 
-    meter = IecDev(vserial0)
+    AS3000 = COM_7E1_9600(port='COM7')
+    meter = IecDev(AS3000)
 
     # send request message
     id_msg = meter.send_msg(RequestMsg())
