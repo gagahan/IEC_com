@@ -1,4 +1,5 @@
-import iec_com
+import iec
+import msg
 
-meter = iec_com.IecDev(iec_com.COM_7E1_9600(port='COM7'))
-meter.send_msg(iec_com.ProgCmdMsgExit())
+meter = iec.MeterDevice(iec.COM_7E1_9600(port='/dev/ttyUSB0'))
+meter.send_msg(msg.Break())
