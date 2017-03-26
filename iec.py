@@ -6,6 +6,22 @@ import msg
 
 
 
+
+NORMAL_PROTOCOL_PROCEDURE = '0'
+SECONDARY_PROTOCOL_PROCEDURE = '1'
+HDLC_PROTOCOL_PROCEDURE = '2'
+_300BAUD = '0'
+_600BAUD = '1'
+_1200BAUD = '2'
+_2400BAUD = '3'
+_4800BAUD = '4'
+_9600BAUD = '5'
+_19200BAUD = '6'
+DATA_READOUT = '0'
+PROGRAMMING_MODE = '1'
+BINARY_MODE = '2'
+
+
 # COM settings
 
 class COM_7E1_9600:
@@ -123,7 +139,11 @@ if __name__ == '__main__':
         sys.exit()
         
     # send ack / option select message
-    meter.send_receive(msg.OptionSelect())
+    meter.send_receive(msg.OptionSelect(NORMAL_PROTOCOL_PROCEDURE,
+                                        _9600BAUD,
+                                        PROGRAMMING_MODE ))
+
+    
 
 
 
