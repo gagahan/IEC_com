@@ -9,6 +9,8 @@ ETX = '\x03'
 EOT = '\x04'
 NAK = '\x14'
 
+
+
 class Msg():
     
     def bbc(self, s):
@@ -47,7 +49,7 @@ class OptionSelect(Msg):
     v : protocol control character (in protocol mode C and E)
         0 - normal protocol procedure
         1 - secondary protocol procedure
-        2 - HDLC protocol procedure, see Annex E
+        2 - HDLC protocol procedure
         3-9 - reserved for future applications
     
     z : Baud rate identification (for baud rate changeover)
