@@ -1,5 +1,3 @@
-import iec
-
 LF = '\x0a'
 CR = '\x0d'
 ACK = '\x06'
@@ -153,7 +151,7 @@ class ProgCmdRead(ProgCmd):
     # 5,6 - reserved for national use
     # 7-9 - reserved for future use
     def __init__(self, d, adr, data):
-        ProgCmd.__init__(adr, data)
+        ProgCmd.__init__(self, adr, data)
         self.c = 'R'
         self.d = d
 
