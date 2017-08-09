@@ -3,10 +3,16 @@ import time
 import re
 import sys
 import msg
+import glob
 from posix import device_encoding
+from PyQt5.QtCore import pyqtSignal, QObject
 
 
 
+
+# constants
+_7E1 = '7E1'
+_8N1 = '8N1'
 
 NORMAL_PROTOCOL_PROCEDURE = '0'
 SECONDARY_PROTOCOL_PROCEDURE = '1'
@@ -23,33 +29,48 @@ PROGRAMMING_MODE = '1'
 BINARY_MODE = '2'
 
 
-# COM settings
-
-class COM_7E1_9600:
-    baudrate = 9600
-    bytesize = serial.SEVENBITS
-    parity = serial.PARITY_EVEN
-    stopbits = serial.STOPBITS_ONE
-
-    def __init__(self, port=''):
-        self.port = port
-
-class COM_7E1_300:
-    baudrate = 300
-    bytesize = serial.SEVENBITS
-    parity = serial.PARITY_EVEN
-    stopbits = serial.STOPBITS_ONE
-
-    def __init__(self, port=''):
-        self.port = port
+PROTOCOLS = ('7E1', '8N1')
+BAUDRATES = (300, 600, 1200, 2400, 4800, 9600, 19200)
 
 
 vserial0 = '/dev/tnt0'
 vserial1 = '/dev/tnt1'
 
+# list serial ports
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob.glob('/dev/tty[A-Za-z]*')
+        ports += glob.glob('/dev/tnt*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
+
+
+
 
 # AS3000 comunication
-
+'''
 REQUEST = '/?!'                            # from client
 IDENT = '\x06051'                          # from meter
 ACK_OSM = '\x06051'                            # from client
@@ -62,38 +83,52 @@ PM_DATA_MSG = 'adr(n..n)\x03\x1e'            # from meter
 
 LFCR = '\r\n'
 
-
+'''
 # AS3000 registers
 
-TIME = '0.9.2'
-PWR = '1.8.0'
-
-
-PWD = '49036942'
-
-
-
-TIMEOUT = 1
-SLOW_DOWN = 300
-
-
-
         
         
-class IecDevice():
+class IecDevice(QObject):
     
-    def __init__(self, ser, verbose=False):
-        self.verbose = verbose
-        if verbose:
-            print('init serial port:', ser.port)
-        self.ser = serial.Serial(port=ser.port,
-                                 baudrate=ser.baudrate,
-                                 parity=ser.parity,
-                                 stopbits=ser.stopbits,
-                                 bytesize=ser.bytesize)
-        print(self.ser.name)
-        print(self.ser.isOpen())
+    STATES = ('idle', 'sending', 'waiting', 'receiving')
+
+    sig_state = pyqtSignal(object)
+    sig_received_data = pyqtSignal(object)
+    
+    def __init__(self, port, protocol='7E1', bdr=9600, verbose=False):
         
+        super().__init__()
+        self.verbose = verbose
+        
+        # init serial port
+
+        self.port = port
+        self.setBaudrate(bdr)
+        self.setProtocol(protocol)        
+        if verbose:
+            print('init serial port: ', 
+                  self.port, self.baudrate, self.protocol)
+        self.ser = serial.Serial(port=self.port,
+                                 baudrate=self.baudrate)
+        self.setTimeOut(1.5)
+        self.setState('idle')
+        self.slow_down = 300
+    
+    
+    def setTimeOut(self, t):
+        self.timeout = t;
+    
+    def setState(self, state):
+        if state in self.STATES:
+            self.state = state;
+            
+    def setProtocol(self, protocol):
+        if protocol in PROTOCOLS:
+            self.protocol = protocol
+        
+    def setBaudrate(self, bdr):
+        if bdr in BAUDRATES:
+            self.baudrate = bdr
         
         
     def show(self, s):
@@ -125,21 +160,23 @@ class IecDevice():
                 return v
     
     def send(self, msg):
+        self.sig_state.emit('sending ' + msg.name)
         if self.verbose:
             print('send ' + msg.name)
             print('-> ' + self.show(str(msg.msg())))
         return self.ser.write(bytes(msg.msg(), 'utf-8'))
     
     
-    def receive(self, msg_end='', timeout=TIMEOUT):
+    def receive(self, msg_end=''):
         msg_end = bytes(msg_end, 'utf-8')
+        self.sig_state.emit('waiting for incoming message..')
         if self.verbose:
             print('waiting for incoming message..')
-        slow_down = SLOW_DOWN / self.ser.baudrate
+        slow_down = self.slow_down / self.ser.baudrate
         out = bytes()
         t_start = time.time()
         nothing_received = True
-        while time.time() - t_start < timeout and nothing_received:
+        while time.time() - t_start < self.timeout and nothing_received:
             while self.ser.inWaiting() > 0:
                 out += self.ser.read(1)
                 nothing_received = False
@@ -149,9 +186,10 @@ class IecDevice():
                         yield re.sub("[b']", "", str(out))
                         out = bytes()
                 time.sleep(slow_down/2)
-        out = re.sub("[b']", "", str(out))
+        #out = re.sub("[b']", "", str(out))
       
         if out:
+            sig_received_data.emit(out)
             if self.verbose:
                 self.show('..received:')
                 self.show('<- ' + str(bytes(out, 'utf-8')))
@@ -182,6 +220,7 @@ class IecDevice():
         self.send(msg)
         for data in self.receive():
             return data
+        print('end')
     
     def wait_for_input(self):
         print('wait for input')
@@ -192,7 +231,9 @@ class IecDevice():
 
 if __name__ == '__main__':
 
-    meter = IecDevice(COM_7E1_300(port='/dev/ttyUSB0'), verbose=True)
+
+    serial_ports()
+    #meter = IecDevice(COM_7E1_300(port='/dev/ttyUSB0'), verbose=True)
     '''
     # send request message
     id_msg = meter.send_receive(msg.Request())
@@ -223,20 +264,4 @@ if __name__ == '__main__':
     #meter.send_receive(msg.ProgCmdR5(adr='0.9.6',data=''))
     
 
-    
-    sleep = 1
-    
-    meter.ser.flushInput()
-    meter.send(msg.Request())
-    meter.wait_for_input()
-    meter.easy_receive()
-    #meter.baudrate_changeover('5')
-    meter.send(msg.OptionSelect(NORMAL_PROTOCOL_PROCEDURE,
-                                '5',
-                                PROGRAMMING_MODE))
-    
-    meter.wait_for_input()
-    meter.easy_receive()
-    meter.send(msg.Break())
-    
-    meter.ser.close()
+

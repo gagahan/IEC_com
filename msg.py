@@ -19,14 +19,14 @@ class Msg():
         return chr(bcc)
 
 
-class AckMsg():
+class AckMsg(Msg):
     name = 'ACK message'
     
     def msg(self):
         return ACK
 
 
-class RepeatRequest():
+class RepeatRequest(Msg):
     name = 'Repeat-request message'
     
     def msg(self):
@@ -35,8 +35,10 @@ class RepeatRequest():
     
 class Request(Msg):
     name = 'request message'
-    adr = ''                            # optional device address
-
+    
+    def __init__(self, adr=''):
+        self.adr = adr
+    
     def msg(self):
         return '/?' + self.adr + '!' + CR + LF
     
@@ -106,14 +108,15 @@ class ProgCmd(Msg):
     d = ''                              # command type identifier
     
     adr = ''                            # address
-    data = ''                           # data set
+    data = ''                           # data
     
-    def __init__(self, adr, data):
-        self.adr = adr
-        self.data = data
-    
+    def __init__(self, c, d, data_set):
+        self.c = c
+        self.d = d
+        self.data_set = data_set
+        
     def msg(self):
-        s = SOH + self.c + self.d + STX + self.adr + '(' + self.data + ')' + ETX
+        s = SOH + self.c + self.d + STX + self.data_set + ETX
         return s + self.bbc(s)
     
     
